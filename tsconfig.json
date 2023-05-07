@@ -3,7 +3,7 @@
     "declaration": true,
     "ignoreDeprecations": "5.0",
     "suppressImplicitAnyIndexErrors": true,
-    "target": "es6",
+    "target": "esnext",
     "module": "commonjs",
     "esModuleInterop": true,
     "outDir": "./lib",
