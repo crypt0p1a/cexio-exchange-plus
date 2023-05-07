@@ -1,7 +1,10 @@
+import { Expand, ExpandRecursively } from './types/expand';
 import { RestOptions } from './types/options';
 import fetch, { RequestInit, Response } from 'node-fetch';
 import crypto from 'crypto';
 import https from 'https';
+import { PrivateRestAction, PublicRestAction, RestPrivateMethods, RestPrivateMethodsWithParameters, RestPrivateMethodsWithoutParameters } from './public';
+import { RestPrivateBody } from './public/rest';
 
 class RestClient {
   #apiKey?: string
@@ -69,24 +72,29 @@ class RestClient {
    * @param {object} params action parameters
    * @returns Promise<Object>
    */
-  callPublic (action: string, params = {}) {
+  callPublic (action: Expand<PublicRestAction>, params = {}) {
     const headers = {
       'Content-type': 'application/json',
       'User-Agent': 'CEX.IO Exchange Plus Node Client'
     }
+
     return this.#request(action, params, headers, 'POST', true)
   }
 
   /**
    * Call private api action
-   * @param {string} action action name
+   * @param {RestAction} action action name
    * @param {object} params action parameters
    * @returns Promise<Object>
    */
-  callPrivate (action: string, params = {}) {
+  callPrivate<K extends Expand<PrivateRestAction> & keyof RestPrivateMethodsWithParameters & keyof RestPrivateBody>(action: K, parameters: RestPrivateMethodsWithParameters[K]): Promise<ExpandRecursively<RestPrivateBody[K]>>
+  callPrivate<K extends Expand<PrivateRestAction> & keyof RestPrivateMethodsWithoutParameters & keyof RestPrivateBody>(action: K): Promise<ExpandRecursively<RestPrivateBody[K]>>
+  callPrivate<K extends Expand<PrivateRestAction> & keyof RestPrivateMethods & keyof RestPrivateBody>(action: K, parameters?: RestPrivateMethods[K]): Promise<ExpandRecursively<RestPrivateBody[K]>> {
     if (this.#isPublicClient) {
       throw new Error('Attempt to call private method on public client')
     }
+
+    var params: any = parameters || {};
 
     const timestamp = this.#unixTime()
     const signatureParams = JSON.stringify(params)
@@ -111,7 +119,7 @@ class RestClient {
     return Math.floor(Date.now() / 60000)
   }
 
-  #getSignature (action: string, timestamp: number, params: any) {
+  #getSignature (action: Expand<PrivateRestAction>, timestamp: number, params: any) {
     const data = action + timestamp + params
     this.#options.log('signature params:', data)
     if (!this.#apiSecret) throw 'No apiSecret set'
@@ -129,12 +137,12 @@ class RestClient {
   }
 
   async #request (
-    action: string,
+    action: Expand<PrivateRestAction | PublicRestAction>,
     body = {},
     headers = {},
     method = 'GET',
     isPublicRequest = false
-  ) {
+  ): Promise<any> {
     if (this.#limitReached()) {
       throw new Error(
         'Internal API call rate limit reached.',
