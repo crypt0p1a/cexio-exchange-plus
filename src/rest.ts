@@ -1,7 +1,10 @@
+import { Expand, ExpandRecursively } from './types/expand';
 import { RestOptions } from './types/options';
 import fetch, { RequestInit, Response } from 'node-fetch';
 import crypto from 'crypto';
 import https from 'https';
+import { PrivateRestAction, PublicRestAction, RestPrivateMethods, RestPrivateMethodsWithParameters, RestPrivateMethodsWithoutParameters } from './public';
+import { RestPrivateMethodsWithParametersWithInference, Return } from './public/rest';
 
 class RestClient {
   #apiKey?: string
@@ -69,24 +72,31 @@ class RestClient {
    * @param {object} params action parameters
    * @returns Promise<Object>
    */
-  callPublic (action: string, params = {}) {
+  async callPublic (action: Expand<PublicRestAction>, params = {}) {
     const headers = {
       'Content-type': 'application/json',
       'User-Agent': 'CEX.IO Exchange Plus Node Client'
     }
+
     return this.#request(action, params, headers, 'POST', true)
   }
 
   /**
    * Call private api action
-   * @param {string} action action name
+   * @param {RestAction} action action name
    * @param {object} params action parameters
    * @returns Promise<Object>
    */
-  callPrivate (action: string, params = {}) {
+  async callPrivate<K extends Expand<PrivateRestAction> & keyof RestPrivateMethodsWithParametersWithInference, R extends RestPrivateMethodsWithParametersWithInference[K], RETURN extends Return<R>>(action: K, parameters: R): Promise<ExpandRecursively<RETURN>>
+  async callPrivate<K extends Expand<PrivateRestAction> & keyof RestPrivateMethodsWithParameters>(action: K, parameters: ExpandRecursively<RestPrivateMethodsWithParameters[K]["request"]>): Promise<ExpandRecursively<RestPrivateMethodsWithParameters[K]["answer"]>>
+  async callPrivate<K extends Expand<PrivateRestAction> & keyof RestPrivateMethodsWithParameters>(action: K, parameters: ExpandRecursively<RestPrivateMethodsWithParameters[K]["request"]>): Promise<ExpandRecursively<RestPrivateMethodsWithParameters[K]["answer"]>>
+  async callPrivate<K extends Expand<PrivateRestAction> & keyof RestPrivateMethodsWithoutParameters>(action: K): Promise<ExpandRecursively<RestPrivateMethodsWithoutParameters[K]["answer"]>>
+  async callPrivate<K extends Expand<PrivateRestAction> & keyof RestPrivateMethods>(action: K, parameters?: RestPrivateMethods[K]): Promise<ExpandRecursively<RestPrivateMethodsWithoutParameters[K]["answer"]>> {
     if (this.#isPublicClient) {
       throw new Error('Attempt to call private method on public client')
     }
+
+    var params: any = parameters || {};
 
     const timestamp = this.#unixTime()
     const signatureParams = JSON.stringify(params)
@@ -111,7 +121,7 @@ class RestClient {
     return Math.floor(Date.now() / 60000)
   }
 
-  #getSignature (action: string, timestamp: number, params: any) {
+  #getSignature (action: Expand<PrivateRestAction>, timestamp: number, params: any) {
     const data = action + timestamp + params
     this.#options.log('signature params:', data)
     if (!this.#apiSecret) throw 'No apiSecret set'
@@ -129,12 +139,12 @@ class RestClient {
   }
 
   async #request (
-    action: string,
+    action: Expand<PrivateRestAction | PublicRestAction>,
     body = {},
     headers = {},
     method = 'GET',
     isPublicRequest = false
-  ) {
+  ): Promise<any> {
     if (this.#limitReached()) {
       throw new Error(
         'Internal API call rate limit reached.',
