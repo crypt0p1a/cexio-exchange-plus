@@ -1,14 +1,9 @@
 import { RestPrivateMethodsWithParameters, RestPrivateMethodsWithoutParameters } from "./rest";
 
-export { PrivateRestAction,
-  PublicRestAction,
+export {
   RestPrivateMethodsWithoutParameters,
   RestPrivateMethodsWithParameters,
 } from "./rest";
-
-export * from "./get_deposit_address";
-export * from "./do_deposit_funds_from_wallet";
-export * from "./do_withdrawal_funds_to_wallet";
 
 /**
  * Finally exports the join of the methods :

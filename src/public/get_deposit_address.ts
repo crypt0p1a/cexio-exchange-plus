@@ -1,23 +1,26 @@
-export type GetDepositAddressRequestMultiple = {
+type GetDepositAddressMultipleRequest = {
   accountId?: string,
-  currencies: string,
+  currencies: string[],
   blockchain?: string,
 }
 
-export type GetDepositAddressRequestUnique = {
+type GetDepositAddressUniqueRequest = {
   accountId?: string,
   currency: string
   blockchain?: string,
 }
 
-export type GetDepositAddressBodyMultiple = {
+type GetDepositAddressMultipleAnswer = {
   accountId: string,
   //TODO add here the definition for the cryptos
 }
 
-export type GetDepositAddressBodyUnique = {
+type GetDepositAddressUniqueAnswer = {
   accountId?: string,
   address?: string,
   currency: string
   blockchain?: string,
 }
+
+export type GetDepositAddressUnique = [ GetDepositAddressUniqueRequest, GetDepositAddressUniqueAnswer ]
+export type GetDepositAddressMultiple = [ GetDepositAddressMultipleRequest, GetDepositAddressMultipleAnswer ]

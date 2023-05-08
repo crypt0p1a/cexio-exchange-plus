@@ -1,11 +1,13 @@
-import { Expand, ExpandRecursively } from './types/expand';
+import { ExpandRecursively } from './types/expand';
 import { RestOptions } from './types/options';
 import fetch, { RequestInit, Response } from 'node-fetch';
 import crypto from 'crypto';
 import https from 'https';
-import { PrivateRestAction, PublicRestAction, RestPrivateMethods, RestPrivateMethodsWithParameters } from './public';
-import { Params } from './public/rest';
+import { RestPrivateMethods, RestPrivateMethodsWithParameters } from './public';
+import { Params, ParamsWithoutParameters, RestPrivateMethodsWithoutParameters } from './public/rest';
 import { AnswerOk, ExtractAnswer, ExtractParam } from './types/call';
+
+type ACTION = string & (keyof RestPrivateMethodsWithoutParameters| keyof RestPrivateMethodsWithParameters)
 
 class RestClient {
   #apiKey?: string
@@ -73,7 +75,7 @@ class RestClient {
    * @param {object} params action parameters
    * @returns Promise<Object>
    */
-  async callPublic (action: Expand<PublicRestAction>, params = {}) {
+  async callPublic<A extends ACTION>(action: A, params = {}) {
     const headers = {
       'Content-type': 'application/json',
       'User-Agent': 'CEX.IO Exchange Plus Node Client'
@@ -89,21 +91,24 @@ class RestClient {
    * will match the expected types out of the box :
    * 
    * const orders = await this.callPrivate("get_my_orders", { clientOrderId: "" })
-   * const deposit1 = await this.callPrivate("get_deposit_address", { currencies: "template" })
-   * const deposit2 = await this.callPrivate("get_deposit_address", { currencies: "test", blockchain: "some blockchain"})
+   * const deposit1 = await this.callPrivate("get_deposit_address", { currencies: ["template"] })
+   * const deposit2 = await this.callPrivate("get_deposit_address", { currencies: ["test"], blockchain: "some blockchain"})
    * 
    * @param {RestAction} action action name
    * @param {object} params action parameters
    * @returns Promise<Object>
    */
   async callPrivate<
-    ACTION extends PrivateRestAction & keyof RestPrivateMethodsWithParameters,
+    ACTION extends keyof RestPrivateMethodsWithParameters,
     PARAMS extends RestPrivateMethodsWithParameters[ACTION] & Params<ACTION>,
     PARAM extends PARAMS[0], // first thing first, we force a "type" validation
     RETURN = ExtractAnswer<ExtractParam<PARAMS, PARAM>, PARAMS>, // and from there, we exclude whatever the dev was putting to the expected one
   >(action: ACTION, parameters: ExpandRecursively<PARAM>): Promise<ExpandRecursively<AnswerOk<RETURN>>>
-  //async callPrivate<K extends Expand<PrivateRestAction> & keyof RestPrivateMethodsWithoutParameters>(action: K): Promise<ExpandRecursively<RestPrivateMethodsWithoutParameters[K]["answer"]>>
-  async callPrivate<K extends Expand<PrivateRestAction> & keyof RestPrivateMethods>(action: K, parameters = null) {
+  async callPrivate<
+    ACTION extends keyof RestPrivateMethodsWithoutParameters,
+    RETURN extends RestPrivateMethodsWithoutParameters[ACTION],
+  >(action: ACTION): Promise<ExpandRecursively<AnswerOk<RETURN>>>
+  async callPrivate<K extends keyof RestPrivateMethodsWithoutParameters>(action: K, parameters = null) {
     if (this.#isPublicClient) {
       throw new Error('Attempt to call private method on public client')
     }
@@ -133,7 +138,7 @@ class RestClient {
     return Math.floor(Date.now() / 60000)
   }
 
-  #getSignature (action: Expand<PrivateRestAction>, timestamp: number, params: any) {
+  #getSignature (action: ACTION, timestamp: number, params: any) {
     const data = action + timestamp + params
     this.#options.log('signature params:', data)
     if (!this.#apiSecret) throw 'No apiSecret set'
@@ -151,7 +156,7 @@ class RestClient {
   }
 
   async #request (
-    action: Expand<PrivateRestAction | PublicRestAction>,
+    action: ACTION,
     body = {},
     headers = {},
     method = 'GET',

@@ -1,4 +1,4 @@
-export type BalanceForCurrency = {
+type BalanceForCurrency = {
   balance: string,
   balanceOnHold: string,
   balanceAvailable: string,
@@ -6,16 +6,23 @@ export type BalanceForCurrency = {
   balanceInConvertedCurrency?: string,
 }
 
-export type GetMyAccountBalancesPerAccount = {
+type GetMyAccountBalancesPerAccount = {
   [account: string]: BalanceForCurrency
 }
 
-export type GetMyAccountBalancesPerAccounts = {
+type GetMyAccountBalancesPerAccounts = {
   [account: string]: GetMyAccountBalancesPerAccount
 }
 
-export type GetMyAccountStatusV2 = {
+type GetMyAccountStatusV2Request = {
+  currencies?: string[],
+  accountIds?: string[]
+}
+
+type GetMyAccountStatusV2Answer = {
   convertedCurrency: "USD",
   creditLine?: any, // missing definition for this object
   balancesPerAccounts: GetMyAccountBalancesPerAccounts
 }
+
+export type GetMyAccountStatusV2 = [ GetMyAccountStatusV2Request, GetMyAccountStatusV2Answer ]
