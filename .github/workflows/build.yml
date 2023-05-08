@@ -15,3 +15,8 @@ jobs:
       - name: check transpilation
         run: |
           npx tsc
+
+      - name: check tests for definitions
+        run: |
+          cd tests/definitions
+          npx tsc
