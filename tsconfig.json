@@ -17,7 +17,8 @@
     "strict": true,
     "jsx": "preserve",
     "noImplicitReturns": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "noEmit": true
   },
   "files": [
     "src/index.ts"

@@ -5,6 +5,11 @@ import { DoDepositFundsToWalletRequest, DoDepositFundsToWalletBody } from './do_
 import { DoWithdrawalFundsToWalletRequest, DoWithdrawalFundsToWalletBody } from './do_withdrawal_funds_to_wallet';
 import { GetMyAccountStatusV2 } from './account_status_v2';
 
+/**
+ * Definition of all the possible actions
+ * 
+ * Note : This will disappear once the below "type" will be fully populated
+ */
 export type PrivateRestAction = "get_my_fee"
   | "get_my_volume"
   | "get_my_orders"
@@ -22,60 +27,39 @@ export type PrivateRestAction = "get_my_fee"
   //TODO get_processing_info
   | "get_deposit_address"
   | "do_deposit_funds_from_wallet"
-  | "do_withdrawal_funds_to_wallet" ;
+  | "do_withdrawal_funds_to_wallet"
+  ;
 
 export type PublicRestAction = "";
 
-export type AnswerOk<T> = {
-  ok: "ok"
-  data: T
-}
-
-
-export type Holder<R, A> = {
-  request: R,
-  answer: A
-}
-
-export type Inference = {
-  GetDepositAddressRequestMultiple: GetDepositAddressBodyMultiple,
-  GetDepositAddressRequestUnique: GetDepositAddressBodyUnique,
-}
-
-export type HolderWithInference<R> = {
-  request: R,
-}
-
-
-export type RestPrivateMethodsWithoutParameters = {
-  get_my_fee: Holder<void, AnswerOk<GetMyFee>>,
-  get_my_volume: Holder<void, AnswerOk<GetMyVolume>>,
-}
-
-export type RestPrivateMethodsWithParameters = {
-  get_my_orders: Holder<{ clientOrderId: string }, void>
-  get_my_account_status_v2: Holder<{ accountIds: string[] } | { currencies: string[] }, AnswerOk<GetMyAccountStatusV2>>,
-  do_withdrawal_funds_to_wallet: Holder<DoWithdrawalFundsToWalletRequest, AnswerOk<DoWithdrawalFundsToWalletBody>>,
-  do_deposit_funds_from_wallet: Holder<DoDepositFundsToWalletRequest, AnswerOk<DoDepositFundsToWalletBody>>,
-}
-
+/**
+ * Definition of types
+ */
 
 /**
- * Managed specific case where the method as multiple input -> 1 matching result
+ * Definition of the simple (request) -> answer
  */
-export type Input = GetDepositAddressRequestMultiple | GetDepositAddressRequestUnique
-export type Output = GetDepositAddressBodyMultiple | GetDepositAddressBodyUnique
-
-// we want to match those 1 to 1
-export type Return<T extends Input> =
-    T extends GetDepositAddressRequestMultiple
-    ? GetDepositAddressBodyMultiple
-    : GetDepositAddressBodyUnique
-
-export type RestPrivateMethodsWithParametersWithInference = {
-  get_deposit_address: GetDepositAddressRequestMultiple|GetDepositAddressBodyUnique,
+export type RestPrivateMethodsWithoutParameters = {
+  get_my_fee: [void, GetMyFee],
+  get_my_volume: [void, GetMyVolume],
 }
 
-export type RestPrivateMethods = RestPrivateMethodsWithParameters
-  | RestPrivateMethodsWithoutParameters
-  | RestPrivateMethodsWithParametersWithInference;
+/**
+ * Definition of the simple (request, params) -> answer
+ * This accept (request, *1) -> *2 where (*1, *2) exists in the form of multiple params->answer
+ */
+export type RestPrivateMethodsWithParameters = {
+  get_my_orders: [{ clientOrderId: string }, void]
+  get_my_account_status_v2: [{ accountIds: string[] } | { currencies: string[] }, GetMyAccountStatusV2],
+  do_withdrawal_funds_to_wallet:
+    | [DoWithdrawalFundsToWalletRequest, DoWithdrawalFundsToWalletBody]
+    | [GetDepositAddressRequestMultiple, DoDepositFundsToWalletBody],
+  do_deposit_funds_from_wallet: [DoDepositFundsToWalletRequest, DoDepositFundsToWalletBody],
+  get_deposit_address: 
+    | [GetDepositAddressRequestMultiple, GetDepositAddressBodyMultiple]
+    | [GetDepositAddressRequestUnique, GetDepositAddressBodyUnique]
+}
+
+export type Params<
+  ACTION extends PrivateRestAction & keyof RestPrivateMethodsWithParameters,
+> = RestPrivateMethodsWithParameters[ACTION]

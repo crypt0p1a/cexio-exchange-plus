@@ -3,8 +3,9 @@ import { RestOptions } from './types/options';
 import fetch, { RequestInit, Response } from 'node-fetch';
 import crypto from 'crypto';
 import https from 'https';
-import { PrivateRestAction, PublicRestAction, RestPrivateMethods, RestPrivateMethodsWithParameters, RestPrivateMethodsWithoutParameters } from './public';
-import { RestPrivateMethodsWithParametersWithInference, Return } from './public/rest';
+import { PrivateRestAction, PublicRestAction, RestPrivateMethods, RestPrivateMethodsWithParameters } from './public';
+import { Params } from './public/rest';
+import { AnswerOk, ExtractAnswer, ExtractParam } from './types/call';
 
 class RestClient {
   #apiKey?: string
@@ -83,15 +84,26 @@ class RestClient {
 
   /**
    * Call private api action
+   * 
+   * In your implementations, using the typescript validation, you can check that the returned values
+   * will match the expected types out of the box :
+   * 
+   * const orders = await this.callPrivate("get_my_orders", { clientOrderId: "" })
+   * const deposit1 = await this.callPrivate("get_deposit_address", { currencies: "template" })
+   * const deposit2 = await this.callPrivate("get_deposit_address", { currencies: "test", blockchain: "some blockchain"})
+   * 
    * @param {RestAction} action action name
    * @param {object} params action parameters
    * @returns Promise<Object>
    */
-  async callPrivate<K extends Expand<PrivateRestAction> & keyof RestPrivateMethodsWithParametersWithInference, R extends RestPrivateMethodsWithParametersWithInference[K], RETURN extends Return<R>>(action: K, parameters: R): Promise<ExpandRecursively<RETURN>>
-  async callPrivate<K extends Expand<PrivateRestAction> & keyof RestPrivateMethodsWithParameters>(action: K, parameters: ExpandRecursively<RestPrivateMethodsWithParameters[K]["request"]>): Promise<ExpandRecursively<RestPrivateMethodsWithParameters[K]["answer"]>>
-  async callPrivate<K extends Expand<PrivateRestAction> & keyof RestPrivateMethodsWithParameters>(action: K, parameters: ExpandRecursively<RestPrivateMethodsWithParameters[K]["request"]>): Promise<ExpandRecursively<RestPrivateMethodsWithParameters[K]["answer"]>>
-  async callPrivate<K extends Expand<PrivateRestAction> & keyof RestPrivateMethodsWithoutParameters>(action: K): Promise<ExpandRecursively<RestPrivateMethodsWithoutParameters[K]["answer"]>>
-  async callPrivate<K extends Expand<PrivateRestAction> & keyof RestPrivateMethods>(action: K, parameters?: RestPrivateMethods[K]): Promise<ExpandRecursively<RestPrivateMethodsWithoutParameters[K]["answer"]>> {
+  async callPrivate<
+    ACTION extends PrivateRestAction & keyof RestPrivateMethodsWithParameters,
+    PARAMS extends RestPrivateMethodsWithParameters[ACTION] & Params<ACTION>,
+    PARAM extends PARAMS[0], // first thing first, we force a "type" validation
+    RETURN = ExtractAnswer<ExtractParam<PARAMS, PARAM>, PARAMS>, // and from there, we exclude whatever the dev was putting to the expected one
+  >(action: ACTION, parameters: ExpandRecursively<PARAM>): Promise<ExpandRecursively<AnswerOk<RETURN>>>
+  //async callPrivate<K extends Expand<PrivateRestAction> & keyof RestPrivateMethodsWithoutParameters>(action: K): Promise<ExpandRecursively<RestPrivateMethodsWithoutParameters[K]["answer"]>>
+  async callPrivate<K extends Expand<PrivateRestAction> & keyof RestPrivateMethods>(action: K, parameters = null) {
     if (this.#isPublicClient) {
       throw new Error('Attempt to call private method on public client')
     }
